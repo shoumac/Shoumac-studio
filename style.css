@@ -505,3 +505,100 @@ footer {
         grid-template-columns: 1fr;
     }
 }
+/* ========================================
+   SHOUMAC STUDIO PRO MAX
+   AMÉLIORATIONS VISUELLES
+======================================== */
+
+/* Menus */
+.field select {
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.field select:focus {
+    outline: none;
+    border-color: var(--purple);
+    box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.15);
+}
+
+/* Curseur d'intensité */
+.range-row input {
+    cursor: pointer;
+}
+
+/* Boutons */
+.button {
+    transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease,
+        opacity 0.2s ease;
+}
+
+.button.primary:hover:not(:disabled) {
+    box-shadow: 0 8px 25px rgba(168, 85, 247, 0.25);
+}
+
+/* Boutons de comparaison */
+.compare-tab {
+    transition:
+        background 0.2s ease,
+        border-color 0.2s ease,
+        color 0.2s ease;
+}
+
+/* Lecteur audio */
+audio {
+    display: block;
+    min-height: 40px;
+}
+
+/* Fichier importé */
+.file-meta {
+    animation: appear 0.25s ease;
+}
+
+/* État du traitement */
+.status.ready {
+    border-color: rgba(142, 245, 197, 0.4);
+    background: rgba(142, 245, 197, 0.06);
+}
+
+/* Animation légère */
+@keyframes appear {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Accessibilité */
+button:focus-visible,
+a:focus-visible,
+select:focus-visible,
+input:focus-visible {
+    outline: 2px solid var(--pink);
+    outline-offset: 3px;
+}
+
+/* Mobile */
+@media (max-width: 520px) {
+    .player-tabs {
+        flex-wrap: wrap;
+    }
+
+    .compare-tab {
+        flex: 1;
+        padding: 10px 8px;
+        font-size: 12px;
+    }
+
+    .status {
+        font-size: 9px;
+    }
+}
