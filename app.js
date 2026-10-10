@@ -7,12 +7,13 @@ let sourceFile = null;
 let originalUrl = null;
 let processedUrl = null;
 let processedBlob = null;
+let selectedOutput = "original";
 
 const $ = (id) => document.getElementById(id);
 
-// --------------------------------------------------
-// UTILITAIRES
-// --------------------------------------------------
+// ============================================
+// OUTILS GÉNÉRAUX
+// ============================================
 
 function formatBytes(bytes) {
     return bytes < 1048576
@@ -29,15 +30,19 @@ function revokeUrl(url) {
     if (url) URL.revokeObjectURL(url);
 }
 
-// --------------------------------------------------
+function fmtDb(value) {
+    return Number.isFinite(value) ? value.toFixed(1) : "—";
+}
+
+// ============================================
 // IMPORT AUDIO
-// --------------------------------------------------
+// ============================================
 
 function setFile(file) {
     if (!file) return;
 
     if (!file.type.startsWith("audio/")) {
-        alert("Choisis un fichier audio valide.");
+        alert("Choisis un fichier audio valide : WAV, MP3, M4A, etc.");
         fileInput.value = "";
         return;
     }
@@ -51,18 +56,17 @@ function setFile(file) {
     processedUrl = null;
     processedBlob = null;
 
+    selectedOutput = "original";
+
     $("fileMeta").classList.remove("hidden");
     $("fileName").textContent = file.name;
-    $("fileSize").textContent =
-        formatBytes(file.size) + " • traitement local";
+    $("fileSize").textContent = formatBytes(file.size) + " • traitement local";
 
-    $("resultTitle").textContent =
-        file.name.replace(/\.[^.]+$/, "");
-
+    $("resultTitle").textContent = file.name.replace(/\.[^.]+$/, "");
     $("resultSubtitle").textContent = "Original prêt à écouter";
 
     $("resultNote").textContent =
-        "Pour améliorer uniquement une voix, importe de préférence une piste voix seule.";
+        "Conseil : pour travailler la voix sans modifier l'instrumentale, importe une piste voix seule.";
 
     setStatus("FICHIER CHARGÉ");
 
@@ -77,13 +81,21 @@ function setFile(file) {
     downloadBtn.disabled = true;
 }
 
+function setActiveTab(type) {
+    selectedOutput = type;
+
+    document.querySelectorAll(".compare-tab").forEach((tab) => {
+        tab.classList.toggle("active", tab.dataset.source === type);
+    });
+}
+
 fileInput.addEventListener("change", (event) => {
     setFile(event.target.files[0]);
 });
 
-// --------------------------------------------------
-// SUPPRIMER LE FICHIER
-// --------------------------------------------------
+// ============================================
+// SUPPRESSION DU FICHIER
+// ============================================
 
 $("removeFile").addEventListener("click", () => {
     sourceFile = null;
@@ -106,39 +118,26 @@ $("removeFile").addEventListener("click", () => {
     processedUrl = null;
     processedBlob = null;
 
-    $("resultTitle").textContent =
-        "Ton morceau apparaîtra ici";
+    setStatus("EN ATTENTE");
 
-    $("resultSubtitle").textContent =
-        "Importe un audio pour commencer";
+    $("resultTitle").textContent = "Ton morceau apparaîtra ici";
+    $("resultSubtitle").textContent = "Importe un audio pour commencer";
 
     $("resultNote").textContent =
         "Le traitement est effectué localement dans ton navigateur.";
-
-    setStatus("EN ATTENTE");
 });
 
-// --------------------------------------------------
-// INTENSITÉ
-// --------------------------------------------------
+// ============================================
+// RÉGLAGE DE L'INTENSITÉ
+// ============================================
 
 $("intensity").addEventListener("input", (event) => {
-    $("intensityValue").textContent =
-        event.target.value + "/10";
+    $("intensityValue").textContent = event.target.value + "/10";
 });
 
-// --------------------------------------------------
-// COMPARAISON ORIGINAL / TRAITÉ
-// --------------------------------------------------
-
-function setActiveTab(type) {
-    document.querySelectorAll(".compare-tab").forEach((tab) => {
-        tab.classList.toggle(
-            "active",
-            tab.dataset.source === type
-        );
-    });
-}
+// ============================================
+// COMPARAISON ORIGINAL / VERSION TRAITÉE
+// ============================================
 
 document.querySelectorAll(".compare-tab").forEach((button) => {
     button.addEventListener("click", () => {
@@ -149,12 +148,12 @@ document.querySelectorAll(".compare-tab").forEach((button) => {
             return;
         }
 
-        player.src =
-            type === "processed"
-                ? processedUrl
-                : originalUrl;
+        player.src = type === "processed"
+            ? processedUrl
+            : originalUrl;
 
         player.load();
+
         setActiveTab(type);
 
         $("resultSubtitle").textContent =
@@ -164,15 +163,15 @@ document.querySelectorAll(".compare-tab").forEach((button) => {
     });
 });
 
-// --------------------------------------------------
-// TRAITEMENT AUDIO
-// --------------------------------------------------
+// ============================================
+// MOTEUR AUDIO PRO MAX
+// ============================================
 
 processBtn.addEventListener("click", async () => {
     if (!sourceFile) return;
 
     processBtn.disabled = true;
-    processBtn.textContent = "⏳ Traitement en cours…";
+    processBtn.textContent = "⏳ Analyse et traitement…";
 
     setStatus("ANALYSE EN COURS");
 
@@ -180,156 +179,218 @@ processBtn.addEventListener("click", async () => {
 
     try {
         const AudioContextClass =
-            window.AudioContext ||
-            window.webkitAudioContext;
+            window.AudioContext || window.webkitAudioContext;
 
-        const OfflineContext =
+        const OfflineContextClass =
             window.OfflineAudioContext ||
             window.webkitOfflineAudioContext;
 
-        if (!AudioContextClass || !OfflineContext) {
+        if (!AudioContextClass || !OfflineContextClass) {
             throw new Error(
-                "Ton navigateur ne prend pas en charge le traitement audio."
+                "Ce navigateur ne prend pas en charge le traitement audio nécessaire."
             );
         }
 
-        // Décodage du fichier importé
+        // Décodage du fichier original
         decodeContext = new AudioContextClass();
 
-        const inputBuffer = await decodeContext.decodeAudioData(
-            await sourceFile.arrayBuffer()
-        );
+        await decodeContext.resume().catch(() => {});
 
-        // Réglages
+        const inputBytes = await sourceFile.arrayBuffer();
+
+        const inputBuffer =
+            await decodeContext.decodeAudioData(inputBytes);
+
+        // Paramètres utilisateur
         const mode = $("mode").value;
 
         const intensity =
             Number($("intensity").value) / 10;
 
+        const strength = Math.max(
+            0,
+            Math.min(1, intensity)
+        );
+
+        // Fréquence d'échantillonnage
         const sampleRate = Math.min(
             Math.max(inputBuffer.sampleRate, 44100),
             96000
         );
 
-        const frameCount =
-            Math.ceil(inputBuffer.duration * sampleRate);
+        const channels = 2;
 
-        const offline = new OfflineContext(
-            2,
+        const frameCount = Math.ceil(
+            inputBuffer.duration * sampleRate
+        );
+
+        // Création du moteur audio hors ligne
+        const offline = new OfflineContextClass(
+            channels,
             frameCount,
             sampleRate
         );
 
         const source = offline.createBufferSource();
+
         source.buffer = inputBuffer;
 
-        // Modes de traitement
-        const voiceOnly = mode === "voice";
-        const rapMode = mode === "rap";
+        // Analyse du fichier original
+        const inputStats = analyzeBuffer(inputBuffer);
 
-        // 1. Filtre passe-haut
+        const spectrum = analyzeSpectrum(inputBuffer);
+
+        // Réglages adaptés au profil choisi
+        const adaptive = chooseAdaptiveSettings({
+            mode,
+            strength,
+            stats: inputStats,
+            spectrum
+        });
+
+        // ========================================
+        // 1. FILTRE PASSE-HAUT
+        // Réduction douce des fréquences très basses
+        // ========================================
+
         const highpass = offline.createBiquadFilter();
 
         highpass.type = "highpass";
-
-        highpass.frequency.value =
-            voiceOnly ? 65 : 28;
-
+        highpass.frequency.value = adaptive.highpassHz;
         highpass.Q.value = 0.707;
 
-        // 2. Contrôle des basses
-        const bass = offline.createBiquadFilter();
+        // ========================================
+        // 2. ÉGALISATION DES BASSES
+        // ========================================
 
-        bass.type = "lowshelf";
-        bass.frequency.value = 115;
+        const lowShelf = offline.createBiquadFilter();
 
-        bass.gain.value =
-            (voiceOnly ? -0.3 : rapMode ? 0.45 : 0.1)
-            * intensity;
+        lowShelf.type = "lowshelf";
+        lowShelf.frequency.value = 115;
+        lowShelf.gain.value = adaptive.lowShelfDb;
 
-        // 3. Réduction légère des fréquences brouillonnes
+        // ========================================
+        // 3. RÉDUCTION DU SON BOUEUX
+        // ========================================
+
         const mud = offline.createBiquadFilter();
 
         mud.type = "peaking";
-
-        mud.frequency.value =
-            voiceOnly ? 260 : 300;
-
+        mud.frequency.value = adaptive.mudHz;
         mud.Q.value = 0.85;
+        mud.gain.value = adaptive.mudDb;
 
-        mud.gain.value =
-            -(voiceOnly ? 1.0 : rapMode ? 0.7 : 0.4)
-            * intensity;
+        // ========================================
+        // 4. PRÉSENCE ET CLARTÉ
+        // ========================================
 
-        // 4. Présence et intelligibilité
         const presence = offline.createBiquadFilter();
 
         presence.type = "peaking";
-
-        presence.frequency.value =
-            voiceOnly ? 3200 : 2800;
-
+        presence.frequency.value = adaptive.presenceHz;
         presence.Q.value = 0.8;
+        presence.gain.value = adaptive.presenceDb;
 
-        presence.gain.value =
-            (voiceOnly ? 1.2 : rapMode ? 0.8 : 0.3)
-            * intensity;
+        // ========================================
+        // 5. ATTÉNUATION DOUCE DES SIBILANCES
+        // Approximation par égalisation
+        // ========================================
 
-        // 5. Légère ouverture des aigus
+        const deEssBand = offline.createBiquadFilter();
+
+        deEssBand.type = "peaking";
+
+        deEssBand.frequency.value =
+            mode === "voice" ? 6800 : 7200;
+
+        deEssBand.Q.value = 1.25;
+
+        deEssBand.gain.value =
+            mode === "voice"
+                ? -0.65 * strength
+                : -0.25 * strength;
+
+        // ========================================
+        // 6. AIR ET BRILLANCE
+        // ========================================
+
         const air = offline.createBiquadFilter();
 
         air.type = "highshelf";
         air.frequency.value = 10000;
+        air.gain.value = adaptive.airDb;
 
-        air.gain.value =
-            (voiceOnly ? 0.45 : 0.2) * intensity;
+        // ========================================
+        // 7. COMPRESSION PRINCIPALE
+        // ========================================
 
-        // 6. Compression
-        const compressor =
-            offline.createDynamicsCompressor();
+        const compressor = offline.createDynamicsCompressor();
 
-        compressor.threshold.value =
-            voiceOnly ? -22 : rapMode ? -18 : -16;
+        compressor.threshold.value = adaptive.thresholdDb;
+        compressor.knee.value = adaptive.kneeDb;
+        compressor.ratio.value = adaptive.ratio;
+        compressor.attack.value = adaptive.attackSec;
+        compressor.release.value = adaptive.releaseSec;
 
-        compressor.knee.value = 18;
+        // ========================================
+        // 8. GAIN DE COMPENSATION
+        // ========================================
 
-        compressor.ratio.value =
-            voiceOnly ? 2.1 : rapMode ? 2.5 : 1.6;
-
-        compressor.attack.value = 0.018;
-        compressor.release.value = 0.16;
-
-        // 7. Gain de compensation modéré
         const makeup = offline.createGain();
 
-        makeup.gain.value =
-            voiceOnly ? 1.08 : rapMode ? 1.04 : 1.0;
+        makeup.gain.value = adaptive.makeupGain;
 
-        // 8. Réduction de niveau pour garder une marge
-        const outputGain = offline.createGain();
+        // ========================================
+        // 9. COMPRESSEUR DE SÉCURITÉ
+        // ========================================
 
-        outputGain.gain.value = 0.92;
+        const peakSafety =
+            offline.createDynamicsCompressor();
 
-        // Connexion de la chaîne audio
+        peakSafety.threshold.value = -3;
+        peakSafety.knee.value = 2;
+        peakSafety.ratio.value = 8;
+        peakSafety.attack.value = 0.003;
+        peakSafety.release.value = 0.08;
+
+        // ========================================
+        // CONNEXION DE LA CHAÎNE AUDIO
+        // ========================================
+
         source.connect(highpass);
-        highpass.connect(bass);
-        bass.connect(mud);
-        mud.connect(presence);
-        presence.connect(air);
-        air.connect(compressor);
-        compressor.connect(makeup);
-        makeup.connect(outputGain);
-        outputGain.connect(offline.destination);
 
+        highpass.connect(lowShelf);
+
+        lowShelf.connect(mud);
+
+        mud.connect(presence);
+
+        presence.connect(deEssBand);
+
+        deEssBand.connect(air);
+
+        air.connect(compressor);
+
+        compressor.connect(makeup);
+
+        makeup.connect(peakSafety);
+
+        peakSafety.connect(offline.destination);
+
+        // Lancement du traitement
         source.start(0);
 
-        // Rendu final
         const rendered = await offline.startRendering();
 
-        // Analyse du niveau
+        // ========================================
+        // ANALYSE DU RÉSULTAT
+        // ========================================
+
         const analysis = analyzeBuffer(rendered);
 
-        // Export WAV 24 bits avec marge de sécurité
+        const loudness = estimateLoudness(rendered);
+
+        // Export WAV 24 bits
         processedBlob = audioBufferToWav24(
             rendered,
             0.891250938
@@ -337,10 +398,9 @@ processBtn.addEventListener("click", async () => {
 
         revokeUrl(processedUrl);
 
-        processedUrl = URL.createObjectURL(
-            processedBlob
-        );
+        processedUrl = URL.createObjectURL(processedBlob);
 
+        // Lecture de la version traitée
         player.src = processedUrl;
         player.load();
 
@@ -352,14 +412,16 @@ processBtn.addEventListener("click", async () => {
             "Version traitée • écoute avant export";
 
         $("resultNote").textContent =
-            "Crête : " + analysis.peakDb.toFixed(1) +
-            " dBFS • RMS : " + analysis.rmsDb.toFixed(1) +
-            " dBFS. Le résultat dépend de la qualité de l'enregistrement.";
+            `Crête : ${fmtDb(analysis.peakDb)} dBFS • ` +
+            `RMS : ${fmtDb(analysis.rmsDb)} dBFS • ` +
+            `Sonie estimée : ${fmtDb(loudness.integratedLufs)} LUFS • ` +
+            `Crest factor : ${fmtDb(analysis.crestDb)} dB. ` +
+            `Profil : ${adaptive.label}. ` +
+            `La mesure LUFS est indicative et ne remplace pas une mesure normalisée.`;
 
         downloadBtn.disabled = false;
 
-        processBtn.textContent =
-            "↻ Refaire le traitement";
+        processBtn.textContent = "↻ Refaire le traitement";
 
         processBtn.disabled = false;
 
@@ -370,8 +432,7 @@ processBtn.addEventListener("click", async () => {
             "Le traitement a échoué : " + error.message
         );
 
-        processBtn.textContent =
-            "⚡ Améliorer mon son";
+        processBtn.textContent = "⚡ Améliorer mon son";
 
         processBtn.disabled = false;
 
@@ -384,9 +445,9 @@ processBtn.addEventListener("click", async () => {
     }
 });
 
-// --------------------------------------------------
+// ============================================
 // EXPORT WAV 24 BITS
-// --------------------------------------------------
+// ============================================
 
 downloadBtn.addEventListener("click", () => {
     if (!processedUrl || !sourceFile) return;
@@ -406,9 +467,9 @@ downloadBtn.addEventListener("click", () => {
     link.remove();
 });
 
-// --------------------------------------------------
-// ANALYSE DU SIGNAL
-// --------------------------------------------------
+// ============================================
+// ANALYSE AUDIO : CRÊTE, RMS ET DYNAMIQUE
+// ============================================
 
 function analyzeBuffer(buffer) {
     let peak = 0;
@@ -425,7 +486,10 @@ function analyzeBuffer(buffer) {
         for (let i = 0; i < data.length; i++) {
             const value = data[i];
 
-            peak = Math.max(peak, Math.abs(value));
+            peak = Math.max(
+                peak,
+                Math.abs(value)
+            );
 
             sumSquares += value * value;
 
@@ -437,22 +501,235 @@ function analyzeBuffer(buffer) {
         sumSquares / Math.max(count, 1)
     );
 
-    return {
-        peakDb:
-            peak > 0
-                ? 20 * Math.log10(peak)
-                : -Infinity,
+    const peakDb = peak > 0
+        ? 20 * Math.log10(peak)
+        : -Infinity;
 
-        rmsDb:
-            rms > 0
-                ? 20 * Math.log10(rms)
+    const rmsDb = rms > 0
+        ? 20 * Math.log10(rms)
+        : -Infinity;
+
+    return {
+        peak,
+        rms,
+        peakDb,
+        rmsDb,
+
+        crestDb:
+            Number.isFinite(peakDb) &&
+            Number.isFinite(rmsDb)
+                ? peakDb - rmsDb
                 : -Infinity
     };
 }
 
-// --------------------------------------------------
+// ============================================
+// ANALYSE APPROXIMATIVE DES BANDES
+// ============================================
+
+function analyzeSpectrum(buffer) {
+    const sampleRate = buffer.sampleRate;
+
+    const bins = {
+        low: 0,
+        mud: 0,
+        presence: 0,
+        high: 0,
+        total: 0
+    };
+
+    const stride = Math.max(
+        1,
+        Math.floor(buffer.length / 120000)
+    );
+
+    for (
+        let channel = 0;
+        channel < buffer.numberOfChannels;
+        channel++
+    ) {
+        const data = buffer.getChannelData(channel);
+
+        let previous = 0;
+
+        for (
+            let i = 0;
+            i < data.length;
+            i += stride
+        ) {
+            const value = data[i];
+
+            const difference = value - previous;
+
+            const frequencyProxy =
+                Math.abs(difference) * sampleRate;
+
+            const power = value * value;
+
+            bins.total += power;
+
+            if (frequencyProxy < 180) {
+                bins.low += power;
+            } else if (frequencyProxy < 900) {
+                bins.mud += power;
+            } else if (frequencyProxy < 5000) {
+                bins.presence += power;
+            } else {
+                bins.high += power;
+            }
+
+            previous = value;
+        }
+    }
+
+    const total = Math.max(
+        bins.total,
+        1e-12
+    );
+
+    return {
+        lowRatio: bins.low / total,
+        mudRatio: bins.mud / total,
+        presenceRatio: bins.presence / total,
+        highRatio: bins.high / total
+    };
+}
+
+// ============================================
+// RÉGLAGES ADAPTATIFS
+// ============================================
+
+function chooseAdaptiveSettings({
+    mode,
+    strength,
+    stats,
+    spectrum
+}) {
+    const voice = mode === "voice";
+    const rap = mode === "rap";
+
+    const headroom = Number.isFinite(stats.peakDb)
+        ? Math.max(
+            0,
+            Math.min(1, (0 - stats.peakDb) / 12)
+        )
+        : 0.5;
+
+    const density = Number.isFinite(stats.crestDb)
+        ? Math.max(
+            0,
+            Math.min(1, (stats.crestDb - 4) / 12)
+        )
+        : 0.5;
+
+    const presenceCorrection =
+        spectrum.presenceRatio > 0.62
+            ? 0.45
+            : 1;
+
+    const airCorrection =
+        spectrum.highRatio > 0.22
+            ? 0.35
+            : 1;
+
+    return {
+        label: voice
+            ? "Voix naturelle"
+            : rap
+                ? "Rap / Trap / Drill"
+                : "Master équilibré",
+
+        highpassHz: voice ? 65 : 28,
+
+        lowShelfDb:
+            (voice
+                ? -0.2
+                : rap
+                    ? 0.45
+                    : 0.1) * strength,
+
+        mudHz: voice ? 260 : 300,
+
+        mudDb:
+            -(voice
+                ? 0.8
+                : rap
+                    ? 0.55
+                    : 0.35) *
+            strength *
+            (spectrum.mudRatio > 0.24 ? 1.15 : 0.7),
+
+        presenceHz: voice ? 3200 : 2800,
+
+        presenceDb:
+            (voice
+                ? 0.95
+                : rap
+                    ? 0.7
+                    : 0.25) *
+            strength *
+            presenceCorrection,
+
+        airDb:
+            (voice ? 0.35 : 0.15) *
+            strength *
+            airCorrection,
+
+        thresholdDb:
+            voice
+                ? -23
+                : rap
+                    ? -18
+                    : -16,
+
+        kneeDb: voice ? 16 : 12,
+
+        ratio:
+            voice
+                ? 2.0
+                : rap
+                    ? 2.4
+                    : 1.55,
+
+        attackSec: voice ? 0.012 : 0.018,
+
+        releaseSec: voice ? 0.12 : 0.16,
+
+        makeupGain:
+            1 +
+            (voice
+                ? 0.05
+                : rap
+                    ? 0.035
+                    : 0.015) *
+            strength *
+            (0.55 + 0.45 * density) *
+            (0.7 + 0.3 * headroom)
+    };
+}
+
+// ============================================
+// ESTIMATION INDICATIVE DE SONIE
+// ATTENTION : CE N'EST PAS UNE MESURE LUFS
+// NORMALISÉE SELON ITU-R BS.1770
+// ============================================
+
+function estimateLoudness(buffer) {
+    const stats = analyzeBuffer(buffer);
+
+    return {
+        integratedLufs:
+            Number.isFinite(stats.rmsDb)
+                ? stats.rmsDb - 0.691
+                : -Infinity,
+
+        method: "Approximation basée sur le RMS"
+    };
+}
+
+// ============================================
 // ENCODAGE WAV 24 BITS
-// --------------------------------------------------
+// ============================================
 
 function audioBufferToWav24(
     buffer,
@@ -464,6 +741,7 @@ function audioBufferToWav24(
     );
 
     const frames = buffer.length;
+
     const bytesPerSample = 3;
 
     const dataBytes =
@@ -476,7 +754,11 @@ function audioBufferToWav24(
     const view = new DataView(bytes);
 
     function writeString(offset, text) {
-        for (let i = 0; i < text.length; i++) {
+        for (
+            let i = 0;
+            i < text.length;
+            i++
+        ) {
             view.setUint8(
                 offset + i,
                 text.charCodeAt(i)
@@ -484,15 +766,29 @@ function audioBufferToWav24(
         }
     }
 
+    // En-tête RIFF
     writeString(0, "RIFF");
-    view.setUint32(4, 36 + dataBytes, true);
+
+    view.setUint32(
+        4,
+        36 + dataBytes,
+        true
+    );
 
     writeString(8, "WAVE");
+
+    // Bloc de format
     writeString(12, "fmt ");
 
     view.setUint32(16, 16, true);
+
     view.setUint16(20, 1, true);
-    view.setUint16(22, channels, true);
+
+    view.setUint16(
+        22,
+        channels,
+        true
+    );
 
     view.setUint32(
         24,
@@ -502,7 +798,9 @@ function audioBufferToWav24(
 
     view.setUint32(
         28,
-        buffer.sampleRate * channels * bytesPerSample,
+        buffer.sampleRate *
+        channels *
+        bytesPerSample,
         true
     );
 
@@ -514,37 +812,46 @@ function audioBufferToWav24(
 
     view.setUint16(34, 24, true);
 
+    // Bloc de données
     writeString(36, "data");
-    view.setUint32(40, dataBytes, true);
 
-    const peak = getPeak(buffer);
+    view.setUint32(
+        40,
+        dataBytes,
+        true
+    );
 
-    const scale =
-        peak > ceiling
-            ? ceiling / peak
-            : 1;
+    // Réduction de gain globale si nécessaire
+    const originalPeak = getPeak(buffer);
+
+    const scale = originalPeak > ceiling
+        ? ceiling / originalPeak
+        : 1;
 
     let offset = 44;
 
-    for (let frame = 0; frame < frames; frame++) {
+    for (
+        let frame = 0;
+        frame < frames;
+        frame++
+    ) {
         for (
             let channel = 0;
             channel < channels;
             channel++
         ) {
             let sample =
-                buffer.getChannelData(channel)[frame]
-                * scale;
+                buffer.getChannelData(channel)[frame] *
+                scale;
 
             sample = Math.max(
                 -1,
                 Math.min(1, sample)
             );
 
-            const intSample =
-                sample < 0
-                    ? Math.round(sample * 8388608)
-                    : Math.round(sample * 8388607);
+            const intSample = sample < 0
+                ? Math.round(sample * 8388608)
+                : Math.round(sample * 8388607);
 
             view.setUint8(
                 offset,
@@ -570,6 +877,10 @@ function audioBufferToWav24(
         { type: "audio/wav" }
     );
 }
+
+// ============================================
+// DÉTECTION DU PIC AUDIO
+// ============================================
 
 function getPeak(buffer) {
     let peak = 0;
