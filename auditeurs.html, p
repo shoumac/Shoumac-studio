@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#090711">
+
+    <title>SHOUMAC MUSIC</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+    <a class="brand" href="index.html">
+        <span class="brand-mark">S</span>
+        <span>SHOUMAC <b>MUSIC</b></span>
+    </a>
+
+    <nav>
+        <a href="index.html">Studio</a>
+        <a class="active" href="auditeurs.html">Auditeurs</a>
+    </nav>
+</header>
+
+<main class="wrap">
+
+    <section class="page-title">
+        <span class="kicker">BIENVENUE DANS MON UNIVERS</span>
+
+        <h1>SHOUMAC <span style="color:#c084fc">MUSIC</span></h1>
+
+        <p>
+            Bienvenue dans mon univers musical.
+            Retrouve mes morceaux, mes sorties et mes projets.
+        </p>
+    </section>
+
+    <section class="empty-state">
+        <h2 style="color:white">🎧 Mes sons arrivent ici</h2>
+
+        <p>
+            Cette page accueillera mes morceaux publiés
+            et les liens pour les écouter.
+        </p>
+
+        <p>
+            Reviens bientôt pour découvrir les prochaines sorties !
+        </p>
+    </section>
+
+    <h2 style="font-family:'Space Grotesk';margin-top:40px">
+        Retrouve-moi
+    </h2>
+
+    <div class="links-row">
+        <a class="social-link" href="#" onclick="return false">
+            ♫ Spotify
+        </a>
+
+        <a class="social-link" href="#" onclick="return false">
+            ▶ YouTube
+        </a>
+
+        <a class="social-link" href="#" onclick="return false">
+            ☁ SoundCloud
+        </a>
+
+        <a class="social-link" href="#" onclick="return false">
+            ♪ TikTok
+        </a>
+
+        <a class="social-link" href="#" onclick="return false">
+            ◎ Instagram
+        </a>
+    </div>
+
+    <section class="share-panel">
+        <div>
+            <span class="kicker">FAIS TOURNER LE SON</span>
+
+            <h2>Merci pour la force ❤️</h2>
+
+            <p>
+                Partage cette page avec tes amis
+                pour leur faire découvrir ma musique.
+            </p>
+        </div>
+
+        <button class="button secondary" id="shareBtn">
+            ↗ Partager ma page
+        </button>
+    </section>
+
+    <footer>
+        SHOUMAC MUSIC • Merci pour le soutien ♡
+    </footer>
+
+</main>
+
+<script>
+document.getElementById("shareBtn").addEventListener("click", async () => {
+    try {
+        if (navigator.share) {
+            await navigator.share({
+                title: "SHOUMAC MUSIC",
+                text: "Découvre mon univers musical",
+                url: location.href
+            });
+        } else {
+            await navigator.clipboard.writeText(location.href);
+            alert("Lien copié !");
+        }
+    } catch (error) {
+        console.log(error);
+    }
+});
+</script>
+
+</body>
+</html>
