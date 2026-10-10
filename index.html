@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#090711">
+    <title>SHOUMAC STUDIO</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+    <a class="brand" href="index.html">
+        <span class="brand-mark">S</span>
+        <span>SHOUMAC <b>STUDIO</b></span>
+    </a>
+
+    <nav>
+        <a class="active" href="index.html">Studio</a>
+        <a href="auditeurs.html">Espace auditeurs ↗</a>
+    </nav>
+</header>
+
+<main class="wrap">
+
+    <section class="hero">
+        <div class="eyebrow">⚡ TON STUDIO AUDIO PERSONNEL</div>
+
+        <h1>Ton son.<br><span>En mieux.</span></h1>
+
+        <p>
+            Importe un morceau ou une voix, applique un traitement
+            audio automatique, compare le résultat et exporte
+            ta version améliorée.
+        </p>
+
+        <a class="button primary" href="#studio">
+            Commencer un traitement ↓
+        </a>
+    </section>
+
+    <section id="studio" class="studio-grid">
+
+        <div class="panel">
+            <div class="section-head">
+                <div>
+                    <span class="kicker">ÉTAPE 01</span>
+                    <h2>Importe ton audio</h2>
+                </div>
+            </div>
+
+            <label class="dropzone" for="audioFile">
+                <span class="upload-icon">＋</span>
+                <strong>Choisis ton morceau</strong>
+                <span>MP3 ou WAV</span>
+                <small>Le traitement se fait sur ton appareil.</small>
+                <input id="audioFile" type="file" accept="audio/*">
+            </label>
+
+            <div id="fileMeta" class="file-meta hidden">
+                <div>
+                    <strong id="fileName"></strong>
+                    <small id="fileSize"></small>
+                </div>
+                <button id="removeFile" class="icon-button">×</button>
+            </div>
+
+            <div class="field">
+                <label for="mode">Type de son</label>
+                <select id="mode">
+                    <option value="master">Morceau complet</option>
+                    <option value="voice">Voix seule</option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label for="intensity">Intensité du traitement</label>
+                <div class="range-row">
+                    <input id="intensity" type="range" min="1" max="10" value="5">
+                    <span id="intensityValue">5/10</span>
+                </div>
+            </div>
+
+            <button id="processBtn" class="button primary full" disabled>
+                ⚡ Améliorer mon son
+            </button>
+
+            <p class="privacy-note">
+                🔒 Ton fichier reste sur ton appareil pendant le traitement.
+            </p>
+        </div>
+
+        <div class="panel">
+            <div class="section-head">
+                <div>
+                    <span class="kicker">ÉTAPE 02</span>
+                    <h2>Écoute & compare</h2>
+                </div>
+                <span id="status" class="status">EN ATTENTE</span>
+            </div>
+
+            <div class="cover">
+                <div class="cover-logo">S<span>•</span></div>
+                <div class="cover-caption">SHOUMAC<br>STUDIO</div>
+            </div>
+
+            <div class="track-info">
+                <strong id="resultTitle">Ton morceau apparaîtra ici</strong>
+                <span id="resultSubtitle">Importe un audio pour commencer</span>
+            </div>
+
+            <div class="player-card">
+                <div class="player-tabs">
+                    <button class="compare-tab active" data-source="original">
+                        Original
+                    </button>
+                    <button class="compare-tab" data-source="processed">
+                        Après traitement
+                    </button>
+                </div>
+
+                <audio id="audioPlayer" controls></audio>
+            </div>
+
+            <button id="downloadBtn" class="button secondary full" disabled>
+                ⇩ Télécharger la version améliorée
+            </button>
+
+            <p id="resultNote" class="result-note">
+                Le traitement améliore certains aspects du son, mais
+                ne remplace pas un mastering professionnel.
+            </p>
+        </div>
+
+    </section>
+
+    <section class="share-panel">
+        <div>
+            <span class="kicker">TON UNIVERS MUSICAL</span>
+            <h2>Partage tes sons avec tes auditeurs.</h2>
+            <p>Présente tes morceaux et tes liens musicaux.</p>
+        </div>
+
+        <a class="button secondary" href="auditeurs.html">
+            Voir l'espace auditeurs ↗
+        </a>
+    </section>
+
+    <footer>
+        SHOUMAC STUDIO • Ton son, en mieux.
+    </footer>
+
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
