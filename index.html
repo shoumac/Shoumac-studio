@@ -65,19 +65,28 @@
                 <button id="removeFile" class="icon-button">×</button>
             </div>
 
-            <div class="field">
-                <label for="mode">Type de son</label>
-                <select id="mode">
-                    <option value="master">Morceau complet</option>
-                    <option value="voice">Voix seule</option>
-                </select>
-            </div>
+           <div class="field">
+    <label for="mode">Type de son</label>
+
+    <select id="mode">
+        <option value="balanced">🎧 Master équilibré</option>
+        <option value="rap">🎤 Rap / Trap / Drill</option>
+        <option value="voice">🎙️ Voix naturelle</option>
+    </select>
+</div>
 
             <div class="field">
                 <label for="intensity">Intensité du traitement</label>
                 <div class="range-row">
-                    <input id="intensity" type="range" min="1" max="10" value="5">
-                    <span id="intensityValue">5/10</span>
+                    <input
+    id="intensity"
+    type="range"
+    min="1"
+    max="10"
+    value="3"
+>
+
+<span id="intensityValue">3/10</span>
                 </div>
             </div>
 
